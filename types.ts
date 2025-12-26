@@ -19,6 +19,7 @@ export interface Team {
   playerName: string;
   isHuman: boolean;
   color: string;
+  logoUrl?: string; // Base64 ou URL do brasão
   stadium: Stadium;
   players: Player[];
   budget: number;
@@ -33,7 +34,7 @@ export interface Match {
   homeScore: number | null;
   awayScore: number | null;
   round: number;
-  stage?: string; // Para Copas: 'Final', 'Semi', etc.
+  stage?: string;
 }
 
 export interface StandingRow {
@@ -64,4 +65,13 @@ export interface Championship {
 }
 
 export type AppState = 'dashboard' | 'create' | 'active_tournament';
-export type ActiveTab = 'table' | 'matches' | 'stadiums' | 'bracket';
+export type ActiveTab = 'table' | 'matches' | 'stadiums';
+
+export interface SavedTeam {
+  id: string;
+  name: string;
+  playerName: string;
+  stadiumName: string;
+  color: string;
+  logoUrl?: string;
+}

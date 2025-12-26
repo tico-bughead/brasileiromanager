@@ -14,7 +14,7 @@ const Home: React.FC<Props> = ({ onContinue }) => {
 
         <div className="relative z-10 flex flex-col items-center text-center space-y-10">
           <div className="w-24 h-24 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-[2rem] flex items-center justify-center shadow-2xl rotate-3 hover:rotate-0 transition-transform duration-500 group">
-            <span className="text-white font-black text-5xl group-hover:scale-110 transition-transform">B</span>
+            <span className="text-white font-black text-5xl group-hover:scale-110 transition-transform">⚽</span>
           </div>
 
           <div className="space-y-6">
