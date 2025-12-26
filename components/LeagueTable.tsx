@@ -7,8 +7,6 @@ interface Props {
 }
 
 const LeagueTable: React.FC<Props> = ({ standings }) => {
-  const formatMoney = (val: number) => `R$ ${(val / 1000000).toFixed(1)}M`;
-
   return (
     <div className="bg-slate-800/50 rounded-xl border border-slate-700 overflow-hidden shadow-2xl">
       <div className="overflow-x-auto">
@@ -21,7 +19,6 @@ const LeagueTable: React.FC<Props> = ({ standings }) => {
               <th className="px-4 py-3 font-semibold text-center">J</th>
               <th className="px-4 py-3 font-semibold text-center">V</th>
               <th className="px-4 py-3 font-semibold text-center">SG</th>
-              <th className="px-4 py-3 font-semibold text-center">Orçamento</th>
               <th className="px-4 py-3 font-semibold text-center hidden md:table-cell">Últimos 5</th>
             </tr>
           </thead>
@@ -49,9 +46,6 @@ const LeagueTable: React.FC<Props> = ({ standings }) => {
                 <td className="px-4 py-4 text-center text-slate-400">{row.played}</td>
                 <td className="px-4 py-4 text-center text-slate-400">{row.won}</td>
                 <td className="px-4 py-4 text-center font-medium text-slate-200">{row.gd > 0 ? `+${row.gd}` : row.gd}</td>
-                <td className="px-4 py-4 text-center font-bold text-emerald-400 whitespace-nowrap">
-                  {formatMoney(row.currentBudget)}
-                </td>
                 <td className="px-4 py-4 text-center hidden md:table-cell">
                   <div className="flex gap-1 justify-center">
                     {row.lastFive.map((res, i) => (

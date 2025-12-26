@@ -20,11 +20,10 @@ export interface Team {
   isHuman: boolean;
   color: string;
   stadium: Stadium;
-  initialBudget: number;
-  budget: number;
-  sponsorship: number; // Ganhos recorrentes
-  salaries: number;    // Gastos recorrentes
   players: Player[];
+  budget: number;
+  sponsorship: number;
+  salaries: number;
 }
 
 export interface Match {
@@ -33,9 +32,8 @@ export interface Match {
   awayId: string;
   homeScore: number | null;
   awayScore: number | null;
-  homeEarnings: number;
-  awayEarnings: number;
   round: number;
+  stage?: string; // Para Copas: 'Final', 'Semi', etc.
 }
 
 export interface StandingRow {
@@ -50,9 +48,20 @@ export interface StandingRow {
   ga: number;
   gd: number;
   points: number;
-  currentBudget: number;
   lastFive: ('W' | 'D' | 'L' | '-')[];
 }
 
-export type AppState = 'home' | 'setup' | 'league';
-export type ActiveTab = 'table' | 'matches' | 'stadiums' | 'budget';
+export type TournamentType = 'league' | 'cup';
+
+export interface Championship {
+  id: string;
+  name: string;
+  type: TournamentType;
+  teams: Team[];
+  matches: Match[];
+  status: 'active' | 'finished';
+  createdAt: number;
+}
+
+export type AppState = 'dashboard' | 'create' | 'active_tournament';
+export type ActiveTab = 'table' | 'matches' | 'stadiums' | 'bracket';
