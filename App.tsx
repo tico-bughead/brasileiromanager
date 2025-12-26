@@ -16,7 +16,6 @@ const App: React.FC = () => {
   
   const isFirstRender = useRef(true);
 
-  // Carregamento inicial do localStorage
   useEffect(() => {
     const saved = localStorage.getItem('manager_pro_championships');
     if (saved) {
@@ -31,7 +30,6 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // Salvamento automático ao mudar campeonatos
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
@@ -52,16 +50,18 @@ const App: React.FC = () => {
     const tempIds = [...teamIds];
     if (n % 2 !== 0) tempIds.push('BYE');
     const numTeams = tempIds.length;
-    const numRounds = numTeams - 1;
+    const numRoundsPerLeg = numTeams - 1;
 
+    // Gerar Turno (Ida)
     const firstLeg: Match[] = [];
-    for (let r = 0; r < numRounds; r++) {
+    const rotationIds = [...tempIds];
+    for (let r = 0; r < numRoundsPerLeg; r++) {
       for (let i = 0; i < numTeams / 2; i++) {
-        const home = tempIds[i];
-        const away = tempIds[numTeams - 1 - i];
+        const home = rotationIds[i];
+        const away = rotationIds[numTeams - 1 - i];
         if (home !== 'BYE' && away !== 'BYE') {
           firstLeg.push({
-            id: `m-${r}-${i}`,
+            id: `m-ida-${r}-${i}`,
             homeId: home as string,
             awayId: away as string,
             homeScore: null,
@@ -70,36 +70,74 @@ const App: React.FC = () => {
           });
         }
       }
-      tempIds.splice(1, 0, tempIds.pop()!);
+      rotationIds.splice(1, 0, rotationIds.pop()!);
     }
 
+    // Gerar Returno (Volta)
     const secondLeg = firstLeg.map(m => ({
       ...m,
-      id: `m-ret-${m.id}`,
+      id: `m-volta-${m.id}`,
       homeId: m.awayId,
       awayId: m.homeId,
-      round: m.round + numRounds
+      round: m.round + numRoundsPerLeg
     }));
 
-    return [...firstLeg, ...secondLeg];
+    let fullSchedule = [...firstLeg, ...secondLeg];
+    let totalRounds = numRoundsPerLeg * 2;
+
+    // Garantir no MÍNIMO 5 rodadas independente da quantidade de times
+    let legCount = 2;
+    while (totalRounds < 5) {
+      legCount++;
+      const extraLeg = firstLeg.map(m => ({
+        ...m,
+        id: `m-extra-${legCount}-${m.id}`,
+        // Alternar mandos em pernas extras
+        homeId: legCount % 2 !== 0 ? m.homeId : m.awayId,
+        awayId: legCount % 2 !== 0 ? m.awayId : m.homeId,
+        round: m.round + totalRounds
+      }));
+      fullSchedule = [...fullSchedule, ...extraLeg];
+      totalRounds += numRoundsPerLeg;
+    }
+
+    return fullSchedule;
   };
 
   const generateCupSchedule = (teamList: Team[]) => {
     const matches: Match[] = [];
     const n = teamList.length;
+    
+    // Jogos de Ida (Round 1)
     for (let i = 0; i < n; i += 2) {
       if (i + 1 < n) {
         matches.push({
-          id: `cup-m1-${i}`,
+          id: `cup-ida-${i}`,
           homeId: teamList[i].id,
           awayId: teamList[i+1].id,
           homeScore: null,
           awayScore: null,
           round: 1,
-          stage: 'Quartas de Final'
+          stage: 'Mata-Mata (Jogo de Ida)'
         });
       }
     }
+
+    // Jogos de Volta (Round 2)
+    for (let i = 0; i < n; i += 2) {
+      if (i + 1 < n) {
+        matches.push({
+          id: `cup-volta-${i}`,
+          homeId: teamList[i+1].id,
+          awayId: teamList[i].id,
+          homeScore: null,
+          awayScore: null,
+          round: 2,
+          stage: 'Mata-Mata (Jogo de Volta)'
+        });
+      }
+    }
+    
     return matches;
   };
 
@@ -134,7 +172,6 @@ const App: React.FC = () => {
   const deleteChampionship = (e: React.MouseEvent, id: string) => {
     e.preventDefault();
     e.stopPropagation();
-    
     if (window.confirm("Deseja realmente excluir este campeonato?")) {
       setChampionships(prev => prev.filter(c => c.id !== id));
       if (activeChampId === id) {
@@ -208,19 +245,9 @@ const App: React.FC = () => {
 
           <div className="flex gap-2">
             {appState !== 'dashboard' && (
-              <button 
-                onClick={() => setAppState('dashboard')}
-                className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-700 transition-all border border-slate-700"
-              >
-                Painel
-              </button>
+              <button onClick={() => setAppState('dashboard')} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-700 transition-all border border-slate-700">Painel</button>
             )}
-            <button 
-              onClick={() => setAppState('create')}
-              className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-500 transition-all shadow-lg shadow-blue-500/20"
-            >
-              + Novo
-            </button>
+            <button onClick={() => setAppState('create')} className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-500 transition-all shadow-lg shadow-blue-500/20">+ Novo</button>
           </div>
         </div>
       </header>
@@ -230,9 +257,7 @@ const App: React.FC = () => {
           <div className="space-y-12 animate-in fade-in slide-in-from-top-4 duration-700">
             <div className="text-center space-y-4">
               <div className="inline-block px-4 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-full text-blue-400 text-[10px] font-black uppercase tracking-widest mb-2">Central de Comando</div>
-              <h2 className="text-5xl md:text-7xl font-black text-white tracking-tighter uppercase italic leading-none">
-                Seus <span className="text-blue-500">Campeonatos</span>
-              </h2>
+              <h2 className="text-5xl md:text-7xl font-black text-white tracking-tighter uppercase italic leading-none">Seus <span className="text-blue-500">Campeonatos</span></h2>
               <p className="text-slate-400 text-lg max-w-xl mx-auto">Gerencie múltiplas ligas e copas. Cada torneio é único.</p>
             </div>
 
@@ -243,51 +268,26 @@ const App: React.FC = () => {
                   <p className="text-white font-bold text-2xl uppercase tracking-tighter">Campo Vazio</p>
                   <p className="text-slate-500 font-medium italic">Nenhum torneio ativo no momento.</p>
                 </div>
-                <button 
-                  onClick={() => setAppState('create')} 
-                  className="px-10 py-5 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-blue-500/20 active:scale-95"
-                >
-                  Criar Primeiro Torneio
-                </button>
+                <button onClick={() => setAppState('create')} className="px-10 py-5 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-blue-500/20 active:scale-95">Criar Primeiro Torneio</button>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {championships.map(c => (
-                  <div 
-                    key={c.id} 
-                    onClick={() => { setActiveChampId(c.id); setAppState('active_tournament'); setActiveTab(c.type === 'league' ? 'table' : 'matches'); }}
-                    className="bg-slate-800/80 border border-slate-700 p-8 rounded-[2.5rem] shadow-xl hover:border-blue-500/40 transition-all group relative overflow-hidden cursor-pointer flex flex-col h-full"
-                  >
+                  <div key={c.id} onClick={() => { setActiveChampId(c.id); setAppState('active_tournament'); setActiveTab(c.type === 'league' ? 'table' : 'matches'); }} className="bg-slate-800/80 border border-slate-700 p-8 rounded-[2.5rem] shadow-xl hover:border-blue-500/40 transition-all group relative overflow-hidden cursor-pointer flex flex-col h-full">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/5 rounded-full -mr-16 -mt-16 group-hover:bg-blue-600/10 transition-colors"></div>
-                    
                     <div className="relative z-10 flex flex-col h-full">
                       <div className="flex justify-between items-start mb-6">
-                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${c.type === 'league' ? 'bg-blue-500/20 text-blue-400' : 'bg-amber-500/20 text-amber-400'}`}>
-                          {c.type === 'league' ? 'Liga (Pontos)' : 'Copa (Mata-Mata)'}
-                        </span>
-                        <button 
-                          onClick={(e) => deleteChampionship(e, c.id)} 
-                          className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-900/50 text-slate-600 hover:text-rose-500 hover:bg-rose-500/10 transition-all z-20"
-                        >
-                          ✕
-                        </button>
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${c.type === 'league' ? 'bg-blue-500/20 text-blue-400' : 'bg-amber-500/20 text-amber-400'}`}>{c.type === 'league' ? 'Liga (Pontos)' : 'Copa (Mata-Mata)'}</span>
+                        <button onClick={(e) => deleteChampionship(e, c.id)} className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-900/50 text-slate-600 hover:text-rose-500 hover:bg-rose-500/10 transition-all z-20">✕</button>
                       </div>
-                      
                       <h3 className="text-3xl font-black text-white mb-2 uppercase tracking-tighter truncate group-hover:text-blue-400 transition-colors">{c.name}</h3>
                       <div className="flex items-center gap-2 mb-8">
                         <div className="flex -space-x-2">
-                          {c.teams.slice(0, 3).map(t => (
-                            <div key={t.id} className="w-6 h-6 rounded-full border-2 border-slate-800 shadow-sm" style={{ backgroundColor: t.color }}></div>
-                          ))}
-                          {c.teams.length > 3 && (
-                            <div className="w-6 h-6 rounded-full border-2 border-slate-800 bg-slate-700 flex items-center justify-center text-[8px] font-black text-white">
-                              +{c.teams.length - 3}
-                            </div>
-                          )}
+                          {c.teams.slice(0, 3).map(t => <div key={t.id} className="w-6 h-6 rounded-full border-2 border-slate-800 shadow-sm" style={{ backgroundColor: t.color }}></div>)}
+                          {c.teams.length > 3 && <div className="w-6 h-6 rounded-full border-2 border-slate-800 bg-slate-700 flex items-center justify-center text-[8px] font-black text-white">+{c.teams.length - 3}</div>}
                         </div>
                         <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest">{c.teams.length} TIMES PARTICIPANTES</span>
                       </div>
-
                       <div className="mt-auto flex items-center justify-between pt-4 border-t border-slate-700/50">
                         <span className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">Iniciado em {new Date(c.createdAt).toLocaleDateString()}</span>
                         <span className="text-blue-500 font-black text-xs uppercase tracking-widest group-hover:translate-x-1 transition-transform">Gerenciar →</span>
@@ -300,9 +300,7 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {appState === 'create' && (
-          <SetupForm onCancel={() => setAppState('dashboard')} onStart={handleStartTournament} />
-        )}
+        {appState === 'create' && <SetupForm onCancel={() => setAppState('dashboard')} onStart={handleStartTournament} />}
 
         {appState === 'active_tournament' && activeChamp && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -316,37 +314,27 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            {activeTab === 'table' && activeChamp.type === 'league' && (
-              <div className="animate-in fade-in slide-in-from-right-4 duration-500">
-                <LeagueTable standings={standings} />
-              </div>
-            )}
-
+            {activeTab === 'table' && activeChamp.type === 'league' && <LeagueTable standings={standings} />}
             {activeTab === 'matches' && (
-              <div className="animate-in fade-in slide-in-from-right-4 duration-500">
-                <MatchList 
-                  matches={activeChamp.matches} 
-                  teams={activeChamp.teams} 
-                  onUpdateScore={updateScore} 
-                  onShowResults={() => setShowChampionModal(true)}
-                />
-              </div>
+              <MatchList 
+                matches={activeChamp.matches} 
+                teams={activeChamp.teams} 
+                onUpdateScore={updateScore} 
+                onShowResults={() => setShowChampionModal(true)}
+                tournamentType={activeChamp.type}
+              />
             )}
-
             {activeTab === 'stadiums' && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-right-4 duration-500">
                 {activeChamp.teams.map(team => (
                   <div key={team.id} className="bg-slate-800 rounded-[2.5rem] border border-slate-700 overflow-hidden shadow-xl hover:border-blue-500/30 transition-all group">
                     <div className="h-32 bg-slate-900 flex items-center justify-center relative overflow-hidden">
                        <div className="absolute inset-0 opacity-10 group-hover:opacity-20 transition-opacity" style={{ backgroundImage: `linear-gradient(45deg, ${team.color} 25%, transparent 25%, transparent 50%, ${team.color} 50%, ${team.color} 75%, transparent 75%, transparent)` , backgroundSize: '40px 40px'}}></div>
-                       <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl font-black text-white shadow-2xl relative z-10 transform group-hover:scale-110 group-hover:rotate-6 transition-all duration-500" style={{ backgroundColor: team.color }}>
-                         {team.name[0]}
-                       </div>
+                       <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl font-black text-white shadow-2xl relative z-10 transform group-hover:scale-110 group-hover:rotate-6 transition-all duration-500" style={{ backgroundColor: team.color }}>{team.name[0]}</div>
                     </div>
                     <div className="p-8">
                       <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mb-1">Sede do {team.name}</p>
                       <h4 className="text-white font-black text-2xl mb-6 tracking-tight">{team.stadium.name}</h4>
-                      
                       <div className="grid grid-cols-2 gap-4">
                         <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-700/50">
                           <p className="text-[8px] text-slate-500 font-black uppercase mb-1">Capacidade</p>
@@ -367,11 +355,7 @@ const App: React.FC = () => {
       </main>
 
       {showChampionModal && activeChamp && activeChamp.type === 'league' && (
-        <ChampionModal 
-          champion={standings[0]} 
-          teamDetails={activeChamp.teams.find(t => t.id === standings[0].teamId)} 
-          onClose={() => setShowChampionModal(false)} 
-        />
+        <ChampionModal champion={standings[0]} teamDetails={activeChamp.teams.find(t => t.id === standings[0].teamId)} onClose={() => setShowChampionModal(false)} />
       )}
     </div>
   );
