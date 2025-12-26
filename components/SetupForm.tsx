@@ -1,7 +1,8 @@
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Team, TournamentType, SavedTeam } from '../types';
 import { TEAM_COLORS, TOTAL_TEAMS } from '../constants';
+import CrestPicker from './CrestPicker';
+import AIImageGenerator from './AIImageGenerator';
 
 interface Props {
   onCancel: () => void;
@@ -12,6 +13,8 @@ const SetupForm: React.FC<Props> = ({ onCancel, onStart }) => {
   const [tournamentName, setTournamentName] = useState('Super League');
   const [type, setType] = useState<TournamentType>('league');
   const [savedTeams, setSavedTeams] = useState<SavedTeam[]>([]);
+  const [activePickerTeamId, setActivePickerTeamId] = useState<string | null>(null);
+  const [activeGeneratorTeamId, setActiveGeneratorTeamId] = useState<string | null>(null);
   
   const [teams, setTeams] = useState<Partial<Team>[]>(Array.from({ length: TOTAL_TEAMS }, (_, i) => ({
     id: Math.random().toString(36).substr(2, 9),
@@ -101,6 +104,8 @@ const SetupForm: React.FC<Props> = ({ onCancel, onStart }) => {
     onStart(tournamentName, type, finalTeams);
   };
 
+  const activeGenTeam = teams.find(t => t.id === activeGeneratorTeamId || t.id === activePickerTeamId);
+
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-20 animate-in fade-in zoom-in duration-500">
       <div className="bg-slate-800 p-8 rounded-[3rem] border border-slate-700 shadow-2xl">
@@ -130,24 +135,38 @@ const SetupForm: React.FC<Props> = ({ onCancel, onStart }) => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {teams.map((team, idx) => (
+          {teams.map((team) => (
             <div key={team.id} className="bg-slate-900/40 p-6 rounded-[2.5rem] border border-slate-700 flex flex-col gap-5 group hover:border-blue-500/30 transition-all">
               <div className="flex items-center gap-4">
                 <div className="relative group/logo">
                   <div 
-                    className="w-20 h-20 rounded-2xl flex items-center justify-center text-3xl font-black text-white shadow-lg overflow-hidden border-2 border-slate-700"
+                    className="w-20 h-20 rounded-2xl flex items-center justify-center text-3xl font-black text-white shadow-lg overflow-hidden border-2 border-slate-700 transition-colors"
                     style={{ backgroundColor: team.color }}
                   >
                     {team.logoUrl ? (
-                      <img src={team.logoUrl} className="w-full h-full object-cover" alt="Logo" />
+                      team.logoUrl.length > 5 ? <img src={team.logoUrl} className="w-full h-full object-cover" alt="Logo" /> : team.logoUrl
                     ) : (
                       team.name?.[0] || '?'
                     )}
                   </div>
-                  <label className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover/logo:opacity-100 transition-opacity cursor-pointer rounded-2xl">
-                    <span className="text-[10px] font-bold text-white uppercase">Upload</span>
-                    <input type="file" className="hidden" accept="image/*" onChange={(e) => e.target.files?.[0] && handleLogoUpload(team.id!, e.target.files[0])} />
-                  </label>
+                  <div className="absolute inset-0 flex flex-col gap-1 items-center justify-center bg-black/70 opacity-0 group-hover/logo:opacity-100 transition-opacity rounded-2xl">
+                    <label className="text-[9px] font-black text-white uppercase cursor-pointer hover:text-blue-400">
+                      Upload
+                      <input type="file" className="hidden" accept="image/*" onChange={(e) => e.target.files?.[0] && handleLogoUpload(team.id!, e.target.files[0])} />
+                    </label>
+                    <button 
+                      onClick={() => setActivePickerTeamId(team.id!)}
+                      className="text-[9px] font-black text-white uppercase hover:text-blue-400"
+                    >
+                      Emoji
+                    </button>
+                    <button 
+                      onClick={() => setActiveGeneratorTeamId(team.id!)}
+                      className="text-[9px] font-black text-emerald-400 uppercase hover:text-emerald-300"
+                    >
+                      IA
+                    </button>
+                  </div>
                 </div>
                 <div className="flex-1">
                   <input 
@@ -158,18 +177,18 @@ const SetupForm: React.FC<Props> = ({ onCancel, onStart }) => {
                   />
                   <div className="flex gap-2">
                     <input type="color" value={team.color} onChange={e => updateTeam(team.id!, 'color', e.target.value)} className="w-6 h-6 rounded cursor-pointer bg-transparent border-none" />
-                    <button onClick={() => saveTeamToVault(team)} className="text-[8px] font-black text-blue-400 uppercase tracking-widest hover:text-blue-300">Salvar Time</button>
+                    <button onClick={() => saveTeamToVault(team)} className="text-[8px] font-black text-blue-400 uppercase tracking-widest hover:text-blue-300">Salvar</button>
                   </div>
                 </div>
               </div>
 
               <div className="space-y-3">
                 <div className="bg-slate-800/50 p-3 rounded-xl border border-slate-700/50">
-                  <label className="text-[8px] text-slate-500 font-black uppercase mb-1 block">Técnico Responsável</label>
+                  <label className="text-[8px] text-slate-500 font-black uppercase mb-1 block">Técnico</label>
                   <input value={team.playerName} onChange={e => updateTeam(team.id!, 'playerName', e.target.value)} className="bg-transparent text-white font-bold w-full outline-none text-sm" />
                 </div>
                 <div className="bg-slate-800/50 p-3 rounded-xl border border-slate-700/50">
-                  <label className="text-[8px] text-slate-500 font-black uppercase mb-1 block">Estádio Principal</label>
+                  <label className="text-[8px] text-slate-500 font-black uppercase mb-1 block">Estádio</label>
                   <input value={team.stadium?.name} onChange={e => updateTeam(team.id!, 'stadium.name', e.target.value)} className="bg-transparent text-white font-bold w-full outline-none text-sm" />
                 </div>
               </div>
@@ -197,6 +216,23 @@ const SetupForm: React.FC<Props> = ({ onCancel, onStart }) => {
           <button onClick={handleStart} className="flex-[2] py-6 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-[2rem] uppercase tracking-widest transition-all text-sm shadow-2xl shadow-blue-500/20">Iniciar Temporada</button>
         </div>
       </div>
+
+      {activePickerTeamId && activeGenTeam && (
+        <CrestPicker
+          onClose={() => setActivePickerTeamId(null)}
+          onSelect={(symbol) => updateTeam(activePickerTeamId, 'logoUrl', symbol)}
+          teamColor={activeGenTeam.color || '#3b82f6'}
+        />
+      )}
+
+      {activeGeneratorTeamId && activeGenTeam && (
+        <AIImageGenerator
+          onClose={() => setActiveGeneratorTeamId(null)}
+          onImageGenerated={(base64) => updateTeam(activeGeneratorTeamId, 'logoUrl', base64)}
+          defaultTeamName={activeGenTeam.name || ''}
+          defaultColor={activeGenTeam.color || '#3b82f6'}
+        />
+      )}
     </div>
   );
 };

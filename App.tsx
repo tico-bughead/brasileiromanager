@@ -5,6 +5,7 @@ import SetupForm from './components/SetupForm';
 import LeagueTable from './components/LeagueTable';
 import MatchList from './components/MatchList';
 import ChampionModal from './components/ChampionModal';
+import { syncChampionshipToCloud, fetchChampionshipsFromCloud, deleteChampionshipFromCloud } from './services/supabase';
 
 const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>('dashboard');
@@ -12,24 +13,60 @@ const App: React.FC = () => {
   const [activeChampId, setActiveChampId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ActiveTab>('table');
   const [showChampionModal, setShowChampionModal] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'error' | 'success'>('idle');
   
   const isFirstRender = useRef(true);
 
+  // Carregar dados (LocalStorage + Supabase)
   useEffect(() => {
-    const saved = localStorage.getItem('manager_pro_v3_champs');
-    if (saved) {
-      try {
-        setChampionships(JSON.parse(saved));
-      } catch (e) { console.error(e); }
-    }
+    const loadData = async () => {
+      // Prioridade inicial para LocalStorage para velocidade
+      const saved = localStorage.getItem('manager_pro_v3_champs');
+      if (saved) {
+        try {
+          setChampionships(JSON.parse(saved));
+        } catch (e) { console.error(e); }
+      }
+
+      // Tentar buscar do Supabase para manter atualizado
+      const cloudData = await fetchChampionshipsFromCloud();
+      if (cloudData && cloudData.length > 0) {
+        // Mapeia os dados do Supabase para o formato da App
+        const formattedCloud: Championship[] = cloudData.map(item => ({
+          id: item.id,
+          name: item.name,
+          type: item.type as TournamentType,
+          teams: item.teams,
+          matches: item.matches,
+          status: item.status as 'active' | 'finished',
+          createdAt: new Date(item.created_at || Date.now()).getTime()
+        }));
+        
+        // Merge inteligente (opcional: aqui apenas substituímos para exemplo simples de cloud-first)
+        setChampionships(formattedCloud);
+      }
+    };
+    
+    loadData();
   }, []);
 
+  // Salvar no LocalStorage e Sync com Supabase
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
       return;
     }
     localStorage.setItem('manager_pro_v3_champs', JSON.stringify(championships));
+    
+    // Cloud Sync Debounced (aqui simplificado para cada mudança significativa)
+    if (championships.length > 0) {
+      setSyncStatus('syncing');
+      const latestChamp = championships[0]; // Sincroniza o mais recente/modificado por padrão neste exemplo
+      syncChampionshipToCloud(latestChamp).then(success => {
+        setSyncStatus(success ? 'success' : 'error');
+        setTimeout(() => setSyncStatus('idle'), 3000);
+      });
+    }
   }, [championships]);
 
   const activeChamp = useMemo(() => championships.find(c => c.id === activeChampId), [championships, activeChampId]);
@@ -106,19 +143,23 @@ const App: React.FC = () => {
   const updateScore = (matchId: string, homeScore: number, awayScore: number) => {
     setChampionships(prev => prev.map(c => {
       if (c.id === activeChampId) {
-        return {
+        const updated = {
           ...c,
           matches: c.matches.map(m => m.id === matchId ? { ...m, homeScore, awayScore } : m)
         };
+        // Trigger manual sync for score update
+        syncChampionshipToCloud(updated);
+        return updated;
       }
       return c;
     }));
   };
 
-  const deleteChampionship = (e: React.MouseEvent, id: string) => {
+  const deleteChampionship = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     if (window.confirm("Deseja realmente excluir este campeonato?")) {
       setChampionships(prev => prev.filter(c => c.id !== id));
+      await deleteChampionshipFromCloud(id);
       if (activeChampId === id) {
         setAppState('dashboard');
         setActiveChampId(null);
@@ -168,7 +209,6 @@ const App: React.FC = () => {
 
   const cupStandings = useMemo(() => {
     if (!activeChamp || activeChamp.type !== 'cup') return [];
-    // Em copa de 6 times (3 duelos), mostramos os ganhadores dos agregados
     const teamStats: Record<string, StandingRow> = {};
     activeChamp.teams.forEach(t => {
       teamStats[t.id] = { teamId: t.id, teamName: t.name, isHuman: t.isHuman, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, points: 0, lastFive: [] };
@@ -199,7 +239,15 @@ const App: React.FC = () => {
             <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center shadow-lg">
               <span className="text-white font-black text-xl">⚽</span>
             </div>
-            <h1 className="text-xl font-black text-white tracking-tighter hidden sm:block uppercase">Super League Manager</h1>
+            <div>
+              <h1 className="text-xl font-black text-white tracking-tighter hidden sm:block uppercase leading-none">Super League</h1>
+              <div className="flex items-center gap-1.5 mt-1">
+                <span className={`w-1.5 h-1.5 rounded-full ${syncStatus === 'syncing' ? 'bg-amber-500 animate-pulse' : syncStatus === 'error' ? 'bg-rose-500' : 'bg-emerald-500'}`}></span>
+                <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">
+                  {syncStatus === 'syncing' ? 'Sincronizando...' : syncStatus === 'error' ? 'Erro Cloud' : 'Cloud Ativo'}
+                </span>
+              </div>
+            </div>
           </div>
           
           {appState === 'active_tournament' && activeChamp && (
@@ -225,13 +273,13 @@ const App: React.FC = () => {
         {appState === 'dashboard' && (
           <div className="space-y-12 animate-in fade-in slide-in-from-top-4 duration-700">
             <div className="text-center space-y-4">
-              <div className="inline-block px-4 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-full text-blue-400 text-[10px] font-black uppercase tracking-widest mb-2">Central de Comando</div>
-              <h2 className="text-5xl md:text-7xl font-black text-white tracking-tighter uppercase italic leading-none">Seus <span className="text-blue-500">Campeonatos</span></h2>
+              <div className="inline-block px-4 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-full text-blue-400 text-[10px] font-black uppercase tracking-widest mb-2">Supabase Sync Enabled</div>
+              <h2 className="text-5xl md:text-7xl font-black text-white tracking-tighter uppercase italic leading-none">Meus <span className="text-blue-500">Torneios</span></h2>
             </div>
 
             {championships.length === 0 ? (
               <div className="bg-slate-800/40 border-2 border-dashed border-slate-700 rounded-[3rem] p-20 text-center space-y-8 flex flex-col items-center">
-                <div className="w-20 h-20 bg-slate-700/30 rounded-full flex items-center justify-center text-4xl mb-2 opacity-50">⚽</div>
+                <div className="w-20 h-20 bg-slate-700/30 rounded-full flex items-center justify-center text-4xl mb-2 opacity-50">🏟️</div>
                 <button onClick={() => setAppState('create')} className="px-10 py-5 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-blue-500/20 active:scale-95">Criar Primeiro Torneio</button>
               </div>
             ) : (

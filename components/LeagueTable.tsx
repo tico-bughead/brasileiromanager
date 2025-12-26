@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { StandingRow, Team } from '../types';
 
@@ -46,10 +45,19 @@ const LeagueTable: React.FC<Props> = ({ standings, teams = [] }) => {
                 <td className="px-6 py-5">
                   <div className="flex items-center gap-4">
                     <div 
-                      className="w-10 h-10 rounded-xl overflow-hidden shadow-lg flex items-center justify-center text-white font-black text-xs border border-slate-700 transition-transform hover:scale-110"
-                      style={{ backgroundColor: getColor(row.teamId) }}
+                      className="w-10 h-10 rounded-xl overflow-hidden shadow-lg flex items-center justify-center text-white font-black text-lg border border-slate-700 transition-transform hover:scale-110"
+                      style={{ backgroundColor: getColor(row.teamId).length > 7 ? '#ffffff' : getColor(row.teamId) }}
                     >
-                      {getLogo(row.teamId) ? <img src={getLogo(row.teamId)} className="w-full h-full object-cover" alt={row.teamName} /> : row.teamName[0]}
+                      {(() => {
+                        const logo = getLogo(row.teamId);
+                        if (!logo) return row.teamName[0];
+                        // Se for uma imagem (Base64 ou URL)
+                        if (logo.includes('data:image') || logo.startsWith('http')) {
+                          return <img src={logo} className="w-full h-full object-contain p-1.5" alt={row.teamName} />;
+                        }
+                        // Se for um emoji
+                        return <span className="text-xl">{logo}</span>;
+                      })()}
                     </div>
                     <div className="flex flex-col">
                       <span className="font-black text-white uppercase tracking-tighter">
