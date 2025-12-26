@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Team, Match, StandingRow, AppState, ActiveTab } from './types';
+import Home from './components/Home';
 import SetupForm from './components/SetupForm';
 import LeagueTable from './components/LeagueTable';
 import MatchList from './components/MatchList';
@@ -9,7 +10,7 @@ import ChampionModal from './components/ChampionModal';
 import { getLeagueAnalysis } from './services/geminiService';
 
 const App: React.FC = () => {
-  const [appState, setAppState] = useState<AppState>('setup');
+  const [appState, setAppState] = useState<AppState>('home');
   const [activeTab, setActiveTab] = useState<ActiveTab>('table');
   const [teams, setTeams] = useState<Team[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
@@ -153,7 +154,7 @@ const App: React.FC = () => {
     <div className="min-h-screen pb-20 selection:bg-blue-500/30">
       <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-30 shadow-xl px-4 py-4 mb-8">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setAppState('home')}>
             <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center shadow-lg">
               <span className="text-white font-black text-xl">B</span>
             </div>
@@ -172,9 +173,15 @@ const App: React.FC = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-4">
-        {appState === 'setup' ? (
+        {appState === 'home' && (
+          <Home onContinue={() => setAppState('setup')} />
+        )}
+        
+        {appState === 'setup' && (
           <SetupForm onStart={handleStart} />
-        ) : (
+        )}
+        
+        {appState === 'league' && (
           <div className="space-y-8">
             {activeTab === 'table' && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

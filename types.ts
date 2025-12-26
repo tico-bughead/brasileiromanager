@@ -54,5 +54,5 @@ export interface StandingRow {
   lastFive: ('W' | 'D' | 'L' | '-')[];
 }
 
-export type AppState = 'setup' | 'league';
+export type AppState = 'home' | 'setup' | 'league';
 export type ActiveTab = 'table' | 'matches' | 'stadiums' | 'budget';
