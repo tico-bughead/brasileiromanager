@@ -19,7 +19,7 @@ export interface Team {
   playerName: string;
   isHuman: boolean;
   color: string;
-  logoUrl?: string; // Base64 ou URL do brasão
+  logoUrl?: string;
   stadium: Stadium;
   players: Player[];
   budget: number;
@@ -34,7 +34,9 @@ export interface Match {
   homeScore: number | null;
   awayScore: number | null;
   round: number;
-  stage?: string;
+  stage: 'Fase de Grupos' | 'Oitavas' | 'Quartas' | 'Semifinal' | 'Final';
+  leg?: 'Ida' | 'Volta';
+  groupId?: string; // Para identificar a qual grupo a partida pertence
 }
 
 export interface StandingRow {
@@ -50,6 +52,7 @@ export interface StandingRow {
   gd: number;
   points: number;
   lastFive: ('W' | 'D' | 'L' | '-')[];
+  groupId?: string;
 }
 
 export type TournamentType = 'league' | 'cup';
@@ -61,10 +64,12 @@ export interface Championship {
   teams: Team[];
   matches: Match[];
   status: 'active' | 'finished';
+  currentStage: 'group' | 'quarter' | 'semifinal' | 'final';
   createdAt: number;
+  teamGroups?: Record<string, string[]>; // groupId -> array of teamIds
 }
 
-export type AppState = 'dashboard' | 'create' | 'active_tournament';
+export type AppState = 'home' | 'dashboard' | 'create' | 'active_tournament';
 export type ActiveTab = 'table' | 'matches' | 'stadiums';
 
 export interface SavedTeam {

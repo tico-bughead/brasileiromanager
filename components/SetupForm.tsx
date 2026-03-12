@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Team, TournamentType, SavedTeam } from '../types';
 import { TEAM_COLORS, TOTAL_TEAMS } from '../constants';
@@ -168,16 +169,47 @@ const SetupForm: React.FC<Props> = ({ onCancel, onStart }) => {
                     </button>
                   </div>
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 overflow-hidden">
                   <input 
                     placeholder="Nome do Clube" 
                     value={team.name} 
                     onChange={e => updateTeam(team.id!, 'name', e.target.value)} 
                     className="bg-transparent text-xl font-black text-white outline-none w-full border-b border-transparent focus:border-blue-500 mb-1"
                   />
-                  <div className="flex gap-2">
-                    <input type="color" value={team.color} onChange={e => updateTeam(team.id!, 'color', e.target.value)} className="w-6 h-6 rounded cursor-pointer bg-transparent border-none" />
-                    <button onClick={() => saveTeamToVault(team)} className="text-[8px] font-black text-blue-400 uppercase tracking-widest hover:text-blue-300">Salvar</button>
+                  <div className="flex items-center justify-between">
+                    <button onClick={() => saveTeamToVault(team)} className="text-[8px] font-black text-blue-400 uppercase tracking-widest hover:text-blue-300">Salvar no Cofre</button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Seletor de Cores Moderno */}
+              <div className="space-y-2">
+                <label className="text-[8px] text-slate-500 font-black uppercase tracking-widest ml-1">Cor Principal</label>
+                <div className="flex flex-wrap gap-2.5 p-3 bg-slate-800/50 rounded-2xl border border-slate-700/50">
+                  {TEAM_COLORS.map((c) => (
+                    <button
+                      key={c}
+                      onClick={() => updateTeam(team.id!, 'color', c)}
+                      className={`w-7 h-7 rounded-full transition-all transform hover:scale-125 hover:z-10 relative ${
+                        team.color === c ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-900 shadow-lg scale-110' : 'opacity-80'
+                      }`}
+                      style={{ backgroundColor: c }}
+                    >
+                      {team.color === c && (
+                        <span className="absolute inset-0 flex items-center justify-center text-[10px]">✓</span>
+                      )}
+                    </button>
+                  ))}
+                  <div className="relative w-7 h-7">
+                    <input 
+                      type="color" 
+                      value={team.color} 
+                      onChange={e => updateTeam(team.id!, 'color', e.target.value)} 
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                    />
+                    <div className="w-full h-full rounded-full border-2 border-dashed border-slate-600 flex items-center justify-center text-[10px] text-slate-500 pointer-events-none group-hover:border-blue-500">
+                      +
+                    </div>
                   </div>
                 </div>
               </div>
